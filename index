@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fitness Tracker Mini App</title>
+    
+    <!-- Telegram WebApp API -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Project Styles -->
+    <style>
+:root {
+    /* Telegram WebApp Theming Variables (with light theme fallbacks) */
+    --tg-bg-color: var(--tg-theme-bg-color, #ffffff);
+    --tg-text-color: var(--tg-theme-text-color, #222222);
+    --tg-hint-color: var(--tg-theme-hint-color, #999999);
+    --tg-link-color: var(--tg-theme-link-color, #2481cc);
+    --tg-button-color: var(--tg-theme-button-color, #2481cc);
+    --tg-button-text-color: var(--tg-theme-button-text-color, #ffffff);
+    --tg-secondary-bg-color: var(--tg-theme-secondary-bg-color, #f1f1f1);
+    
+    /* Layout Variables */
+    --card-bg: var(--tg-bg-color);
+    --app-bg: var(--tg-secondary-bg-color);
+    --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.06);
+    --shadow-dark: 0 4px 24px rgba(0, 0, 0, 0.3);
+    --border-radius-card: 16px;
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    
+    --skeleton-base: rgba(150, 150, 150, 0.2);
+    --skeleton-highlight: rgba(150, 150, 150, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* Fallbacks for Dark Mode if not launched via Telegram */
+        --tg-bg-color: var(--tg-theme-bg-color, #1c1c1d);
+        --tg-text-color: var(--tg-theme-text-color, #ffffff);
+        --tg-hint-color: var(--tg-theme-hint-color, #8e8e93);
+        --tg-link-color: var(--tg-theme-link-color, #0a84ff);
+        --tg-button-color: var(--tg-theme-button-color, #0a84ff);
+        --tg-secondary-bg-color: var(--tg-theme-secondary-bg-color, #000000);
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--app-bg);
+    color: var(--tg-text-color);
+    line-height: 1.5;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* Typography */
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 20px 20px;
+    letter-spacing: -0.5px;
+}
+
+h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+/* Utility */
+.hidden {
+    display: none !important;
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Reusable Cards */
+.card {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius-card);
+    padding: 18px;
+    margin: 0 16px 16px 16px;
+    box-shadow: var(--shadow-light);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:active {
+    transform: scale(0.98);
+}
+
+/* Loader Base */
+.loader-container, .error-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--app-bg);
+    z-index: 999;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--skeleton-base);
+    border-top: 4px solid var(--tg-button-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loader-container p {
+    color: var(--tg-hint-color);
+    font-weight: 500;
+}
+
+/* Primary Button */
+.primary-btn {
+    background-color: var(--tg-button-color);
+    color: var(--tg-button-text-color);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: opacity 0.2s ease;
+}
+
+.primary-btn:active {
+    opacity: 0.8;
+}
+
+/* Skeleton Effect */
+.skeleton {
+    background: linear-gradient(-45deg, var(--skeleton-base) 40%, var(--skeleton-highlight) 50%, var(--skeleton-base) 60%);
+    background-size: 300%;
+    background-position-x: 100%;
+    animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-text {
+    background: linear-gradient(-45deg, var(--skeleton-base) 40%, var(--skeleton-highlight) 50%, var(--skeleton-base) 60%);
+    background-size: 300%;
+    background-position-x: 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 6px;
+    color: transparent !important;
+}
+
+@keyframes shimmer {
+    to { background-position-x: 0%; }
+}
+
+/* Profile Elements */
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--skeleton-base);
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-info h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    width: fit-content;
+    min-width: 120px;
+}
+
+.profile-info p {
+    color: var(--tg-hint-color);
+    font-size: 14px;
+    margin-bottom: 6px;
+    width: fit-content;
+    min-width: 100px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.premium-badge {
+    background: linear-gradient(135deg, #FFB900, #FF7700);
+    color: white;
+    box-shadow: 0 2px 8px rgba(255, 119, 0, 0.3);
+}
+
+.free-badge {
+    background-color: var(--tg-hint-color);
+    color: white;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--skeleton-base);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: var(--tg-hint-color);
+    font-size: 15px;
+}
+
+.detail-value {
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 50px;
+    text-align: right;
+}
+
+/* About Block */
+.about-block p {
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.about-block .desc {
+    color: var(--tg-hint-color);
+    margin-top: 12px;
+    font-style: italic;
+}
+
+.links {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legal-link {
+    color: var(--tg-link-color);
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Charts Containers */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 220px;
+}
+
+.pie-container {
+    height: 240px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Bottom Navigation */
+.bottom-spacer {
+    height: 90px;
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background-color: var(--card-bg);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+    padding: 0 10px;
+    backdrop-filter: blur(10px);
+    z-index: 100;
+}
+
+.nav-item {
+    background: transparent;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--tg-hint-color);
+    font-family: inherit;
+    cursor: pointer;
+    width: 100px;
+    transition: color 0.2s ease;
+}
+
+.nav-icon {
+    width: 24px;
+    height: 24px;
+    transition: transform 0.2s ease;
+}
+
+.nav-item span {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.nav-item.active {
+    color: var(--tg-button-color);
+}
+
+.nav-item.active .nav-icon {
+    transform: translateY(-2px);
+}
+    </style>
+</head>
+<body>
+
+    <!-- Loading State -->
+    <div id="loader" class="loader-container">
+        <div class="spinner"></div>
+        <p>Загрузка данных...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="error" class="error-container hidden">
+        <h2>Упс!</h2>
+        <p id="error-message">Не удалось загрузить данные</p>
+        <button id="retry-btn" class="primary-btn">Повторить</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="app" class="hidden">
+        
+        <!-- Tab 1: Статистика -->
+        <main id="tab-stats" class="tab-pane active fade-in">
+            <h1 class="page-title">Статистика</h1>
+            
+            <div class="card">
+                <h3>Вес (кг)</h3>
+                <div class="chart-container">
+                    <canvas id="weightChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Вода (мл)</h3>
+                <div class="chart-container">
+                    <canvas id="waterChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Тренировки (в неделю)</h3>
+                <div class="chart-container">
+                    <canvas id="workoutChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>БЖУ (Макросы)</h3>
+                <div class="chart-container pie-container">
+                    <canvas id="macrosChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Spacing for bottom navigation -->
+            <div class="bottom-spacer"></div>
+        </main>
+
+        <!-- Tab 2: Профиль -->
+        <main id="tab-profile" class="tab-pane fade-in">
+            <h1 class="page-title">Профиль</h1>
+            
+            <div class="card profile-header">
+                <img id="profile-photo" src="" alt="Avatar" class="avatar skeleton" />
+                <div class="profile-info">
+                    <h2 id="profile-name" class="skeleton-text">Loading...</h2>
+                    <p id="profile-username" class="skeleton-text">@loading</p>
+                    <span id="profile-subscription" class="badge premium-badge skeleton-text">...</span>
+                </div>
+            </div>
+
+            <div class="card profile-details">
+                <div class="detail-row">
+                    <span class="detail-label">Текущий вес</span>
+                    <strong id="profile-weight" class="detail-value skeleton-text">-- кг</strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Цель тренировок</span>
+                    <strong id="profile-goal" class="detail-value skeleton-text">...</strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Уровень программы</span>
+                    <strong id="profile-level" class="detail-value skeleton-text">...</strong>
+                </div>
+            </div>
+
+            <div class="card about-block">
+                <h3>О приложении</h3>
+                <p><strong>Название:</strong> Fitness Tracker Mini App</p>
+                <p><strong>Версия:</strong> 1.0.0</p>
+                <p class="desc">Приложение для отслеживания тренировок, веса и воды в удобном формате Telegram.</p>
+                
+                <div class="links">
+                    <a href="https://telegra.ph/Privacy-Policy-02-17-168" target="_blank" class="legal-link">Политика конфиденциальности</a>
+                    <a href="https://telegra.ph/Terms-of-Service--Health-Disclaimer-02-17" target="_blank" class="legal-link">Условия использования</a>
+                </div>
+            </div>
+            
+            <!-- Spacing for bottom navigation -->
+            <div class="bottom-spacer"></div>
+        </main>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-tab="tab-stats">
+            <svg viewBox="0 0 24 24" fill="none" class="nav-icon">
+                <path d="M18 20V10M12 20V4M6 20V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Статистика</span>
+        </button>
+        <button class="nav-item" data-tab="tab-profile">
+            <svg viewBox="0 0 24 24" fill="none" class="nav-icon">
+                <path d="M20 21V19C20 17.8954 19.1046 17 18 17H6C4.89543 17 4 17.8954 4 19V21M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Профиль</span>
+        </button>
+    </nav>
+
+    <script>
+const tg = window.Telegram.WebApp;
+
+// Expand WebApp to full height
+tg.expand();
+
+// Fallback user for local testing
+const user = tg.initDataUnsafe?.user || {
+    id: 12345678,
+    first_name: "Иван",
+    username: "ivan_test",
+    photo_url: ""
+};
+
+const WEBHOOK_URL = "https://lkn123.app.n8n.cloud/webhook-test/miniapp-data";
+
+document.addEventListener("DOMContentLoaded", () => {
+    initTabs();
+    
+    document.getElementById("retry-btn").addEventListener("click", fetchData);
+    
+    // Auto-fetch data on load
+    fetchData();
+});
+
+function initTabs() {
+    const navItems = document.querySelectorAll(".nav-item");
+    const tabPanes = document.querySelectorAll(".tab-pane");
+
+    navItems.forEach(item => {
+        item.addEventListener("click", () => {
+            const tabId = item.getAttribute("data-tab");
+            
+            navItems.forEach(nav => nav.classList.remove("active"));
+            tabPanes.forEach(pane => {
+                pane.classList.remove("active");
+                pane.classList.add("hidden");
+            });
+
+            item.classList.add("active");
+            const activePane = document.getElementById(tabId);
+            activePane.classList.add("active");
+            activePane.classList.remove("hidden");
+        });
+    });
+}
+
+async function fetchData() {
+    document.getElementById("loader").classList.remove("hidden");
+    document.getElementById("error").classList.add("hidden");
+    document.getElementById("app").classList.add("hidden");
+
+    try {
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                chat_id: user.id || 0,
+                username: user.username || "",
+                first_name: user.first_name || "",
+                photo_url: user.photo_url || ""
+            })
+        });
+
+        if (!response.ok) throw new Error("Network error Status: " + response.status);
+
+        const data = await response.json();
+        
+        // Hide loader, show main app
+        document.getElementById("loader").classList.add("hidden");
+        document.getElementById("app").classList.remove("hidden");
+        
+        renderProfileInfo(data.users || {});
+        renderCharts(data);
+
+    } catch (error) {
+        console.error("Failed to fetch data:", error);
+        document.getElementById("loader").classList.add("hidden");
+        document.getElementById("error").classList.remove("hidden");
+    }
+}
+
+// ---- Rendering Logic ---- //
+
+function removeSkeleton(element, text) {
+    element.classList.remove("skeleton-text");
+    element.textContent = text || "—";
+    element.style.color = "inherit";
+    element.style.background = "none";
+}
+
+function renderProfileInfo(userData) {
+    // Render Telegram Native Info
+    const photoEl = document.getElementById("profile-photo");
+    photoEl.src = user.photo_url || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23ccc' width='100' height='100'/><text fill='%23666' font-size='40' x='50' y='65' font-family='sans-serif' text-anchor='middle'>?</text></svg>";
+    photoEl.classList.remove("skeleton");
+
+    removeSkeleton(document.getElementById("profile-name"), user.first_name || "Неизвестный");
+    removeSkeleton(document.getElementById("profile-username"), user.username ? `@${user.username}` : "");
+
+    // Subscription
+    const subEl = document.getElementById("profile-subscription");
+    subEl.classList.remove("skeleton-text");
+    subEl.style.color = "white"; // remove transparent color from skeleton
+    if (userData.subscription_tier === "premium") {
+        subEl.textContent = "Premium";
+        subEl.className = "badge premium-badge";
+    } else {
+        subEl.textContent = "Free";
+        subEl.className = "badge free-badge";
+    }
+
+    // Additional User details from backend
+    removeSkeleton(document.getElementById("profile-weight"), `${userData.current_weight || "--"} кг`);
+    removeSkeleton(document.getElementById("profile-goal"), userData.workout_goal || "Не указана");
+    removeSkeleton(document.getElementById("profile-level"), userData.program_level || "Не указан");
+}
+
+// Global chart instances to destroy them before re-rendering
+const charts = {};
+
+function initChart(id, config) {
+    if (charts[id]) charts[id].destroy();
+    const ctx = document.getElementById(id).getContext('2d');
+    
+    // Automatically apply Telegram-aware default font color
+    Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--tg-hint-color').trim() || '#999';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    
+    charts[id] = new Chart(ctx, config);
+}
+
+function renderCharts(data) {
+    const tgButtonColor = getComputedStyle(document.body).getPropertyValue('--tg-button-color').trim() || '#2481cc';
+    const tgHintColor = getComputedStyle(document.body).getPropertyValue('--tg-hint-color').trim() || '#999999';
+
+    // 1. Weight Chart
+    const weightHistory = data.weight_history || [];
+    initChart('weightChart', {
+        type: 'line',
+        data: {
+            labels: weightHistory.map(w => w.date || ''),
+            datasets: [{
+                label: 'Вес (кг)',
+                data: weightHistory.map(w => parseFloat(w.weight) || 0),
+                borderColor: tgButtonColor,
+                backgroundColor: tgButtonColor + '30', // 30 in hex for alpha
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: tgButtonColor
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { min: Math.min(...weightHistory.map(w => w.weight)) - 2 }
+            }
+        }
+    });
+
+    // 2. Water Chart
+    const waterHistory = data.daily_metrics || [];
+    initChart('waterChart', {
+        type: 'bar',
+        data: {
+            labels: waterHistory.map(w => w.date || ''),
+            datasets: [
+                {
+                    type: 'line',
+                    label: 'Цель (мл)',
+                    data: waterHistory.map(w => parseFloat(w.daily_water_goal) || 2000),
+                    borderColor: '#2ecc71',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    type: 'bar',
+                    label: 'Выпито (мл)',
+                    data: waterHistory.map(w => parseFloat(w.water_ml) || 0),
+                    backgroundColor: '#3498db',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10 } } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // 3. Workout Chart
+    const workoutHistory = data.workout_history || [];
+    initChart('workoutChart', {
+        type: 'bar',
+        data: {
+            labels: workoutHistory.map(w => w.week || w.date || ''),
+            datasets: [{
+                label: 'Кол-во тренировок',
+                data: workoutHistory.map(w => parseInt(w.count || w.workouts || 0)),
+                backgroundColor: '#9b59b6',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+        }
+    });
+
+    // 4. Macros Chart
+    const macros = data.users?.macros || { p: 30, f: 30, c: 40 };
+    initChart('macrosChart', {
+        type: 'doughnut',
+        data: {
+            labels: ['Белки', 'Жиры', 'Углеводы'],
+            datasets: [{
+                data: [parseFloat(macros.p), parseFloat(macros.f), parseFloat(macros.c)],
+                backgroundColor: ['#e74c3c', '#f1c40f', '#3498db'],
+                borderWidth: 0,
+                cutout: '75%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' }
+            }
+        }
+    });
+}
+    </script>
+</body>
+</html>
