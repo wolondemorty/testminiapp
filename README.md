@@ -1,2 +1,0 @@
-# testminiapp
-sdfadf
